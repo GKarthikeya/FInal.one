@@ -66,8 +66,11 @@ def get_attendance_data(username, password):
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
 
-    # ✅ Hardcoded Chrome binary location for Render or Linux servers
-    options.binary_location = "/usr/bin/google-chrome"
+    chrome_path = os.environ.get("GOOGLE_CHROME_BIN")
+    if not chrome_path or not os.path.exists(chrome_path):
+        raise RuntimeError("Chrome binary not found. Set GOOGLE_CHROME_BIN environment variable to correct path.")
+    
+    options.binary_location = chrome_path
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
@@ -96,9 +99,12 @@ def show_attendance():
     username = request.form["username"]
     password = request.form["password"]
 
-    data = get_attendance_data(username, password)
-    subjects = data["subjects"]
+    try:
+        data = get_attendance_data(username, password)
+    except Exception as e:
+        return f"<h3>Error: {str(e)}</h3><p>Check your credentials or Chrome setup.</p>"
 
+    subjects = data["subjects"]
     table_data = []
     for i, (code, sub) in enumerate(subjects.items(), start=1):
         table_data.append([i, code, sub["name"], sub["present"], sub["absent"], f"{sub['percentage']}%"])
