@@ -1,9 +1,6 @@
 services:
   - type: web
-    name: final-one
+    name: attendance-app
     env: python
-    buildCommand: ./build.sh
-    startCommand: ./start.sh
-    envVars:
-      - key: GOOGLE_CHROME_BIN
-        value: /usr/bin/google-chrome
+    buildCommand: ./build.sh && pip install -r requirements.txt
+    startCommand: gunicorn app:app
