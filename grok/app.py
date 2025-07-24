@@ -7,7 +7,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from tabulate import tabulate
 import time
 import re
-import shutil  # To find Chromium binary
+import os
 
 app = Flask(__name__)
 
@@ -61,17 +61,15 @@ def calculate_attendance_percentage(rows):
 
 def get_attendance_data(username, password):
     options = Options()
-    options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-gpu')
+    options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-gpu")
 
-    # Locate Chromium binary
-    chrome_path = shutil.which("chromium") or shutil.which("chromium-browser")
-    if chrome_path:
-        options.binary_location = chrome_path
-    else:
-        raise RuntimeError("Chromium binary not found. Install Chromium in the environment.")
+    chrome_bin = os.environ.get("GOOGLE_CHROME_BIN", "/usr/bin/google-chrome")
+    if not os.path.exists(chrome_bin):
+        raise RuntimeError("Chrome binary not found at GOOGLE_CHROME_BIN or /usr/bin/google-chrome")
+    options.binary_location = chrome_bin
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
@@ -121,4 +119,3 @@ def ping():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
