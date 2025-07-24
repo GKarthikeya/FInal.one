@@ -107,5 +107,10 @@ def show_attendance():
 
     return render_template("attendance.html", table_html=table_html, overall=data["overall"])
 
+@app.route("/ping", methods=["GET"])
+def ping():
+    return "pong", 200
+
 if __name__ == "__main__":
     app.run(debug=True)
+
