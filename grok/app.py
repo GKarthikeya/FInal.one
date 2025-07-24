@@ -66,10 +66,8 @@ def get_attendance_data(username, password):
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
 
-    chrome_bin = os.environ.get("GOOGLE_CHROME_BIN", "/usr/bin/google-chrome")
-    if not os.path.exists(chrome_bin):
-        raise RuntimeError("Chrome binary not found at GOOGLE_CHROME_BIN or /usr/bin/google-chrome")
-    options.binary_location = chrome_bin
+    # ✅ Hardcoded Chrome binary location for Render or Linux servers
+    options.binary_location = "/usr/bin/google-chrome"
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
