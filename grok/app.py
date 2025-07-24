@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options  # <-- added
 from webdriver_manager.chrome import ChromeDriverManager
 from tabulate import tabulate
 import time
@@ -58,7 +59,14 @@ def calculate_attendance_percentage(rows):
     return result
 
 def get_attendance_data(username, password):
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    
     try:
         driver.get(COLLEGE_LOGIN_URL)
         time.sleep(2)
