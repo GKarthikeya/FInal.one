@@ -2,11 +2,12 @@ from flask import Flask, render_template, request
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options  # <-- added
+from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from tabulate import tabulate
 import time
 import re
+import shutil  # To find Chromium binary
 
 app = Flask(__name__)
 
@@ -65,8 +66,15 @@ def get_attendance_data(username, password):
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
 
+    # Locate Chromium binary
+    chrome_path = shutil.which("chromium") or shutil.which("chromium-browser")
+    if chrome_path:
+        options.binary_location = chrome_path
+    else:
+        raise RuntimeError("Chromium binary not found. Install Chromium in the environment.")
+
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    
+
     try:
         driver.get(COLLEGE_LOGIN_URL)
         time.sleep(2)
