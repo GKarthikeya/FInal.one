@@ -1,7 +1,9 @@
 services:
   - type: web
-    name: attendance-flask
+    name: final-one
     env: python
     buildCommand: ./build.sh
-    startCommand: gunicorn --preload grok.app:app
-    plan: free
+    startCommand: ./start.sh
+    envVars:
+      - key: GOOGLE_CHROME_BIN
+        value: /usr/bin/google-chrome
