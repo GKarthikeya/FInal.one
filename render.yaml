@@ -3,5 +3,5 @@ services:
     name: attendance-flask
     env: python
     buildCommand: ./build.sh
-    startCommand: gunicorn grok.app:app
+    startCommand: gunicorn --preload grok.app:app
     plan: free
