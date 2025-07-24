@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: attendance-flask
+    name: attendance-iare
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app
