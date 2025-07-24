@@ -7,3 +7,5 @@ services:
       pip install -r requirements.txt
     startCommand: gunicorn grok.app:app
     plan: free
+apt-get: update
+apt-get: install -y chromium
