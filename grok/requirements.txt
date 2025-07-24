@@ -1,3 +1,5 @@
-flask
+Flask
 selenium
+tabulate
 webdriver-manager
+gunicorn
