@@ -4,6 +4,7 @@ services:
     env: docker
     plan: free
     autoDeploy: true
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: GOOGLE_CHROME_BIN
         value: /usr/bin/chromium
