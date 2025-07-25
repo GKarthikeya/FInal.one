@@ -11,7 +11,7 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
     echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
     apt-get update && apt-get install -y google-chrome-stable
 
-# Install compatible ChromeDriver version (known to work with current Chrome)
+# Install specific ChromeDriver version
 ENV CHROMEDRIVER_VERSION=114.0.5735.90
 RUN wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip" && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
@@ -21,14 +21,15 @@ RUN wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$
 ENV GOOGLE_CHROME_BIN=/usr/bin/google-chrome
 ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 
+# Set working directory
 WORKDIR /app
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy your app code
+# Copy your application
 COPY ./grok /app
 
-# Start the app
-CMD ["gunicorn", "app:app", "--chdir", "/app", "--bind", "0.0.0.0:10000"]
+# Start app with Gunicorn
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
