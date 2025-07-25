@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Install dependencies required for Chrome
+# Install Chrome dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
@@ -20,20 +20,20 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     --no-install-recommends
 
-# Install Google Chrome
+# Install Chrome
 RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
     echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
     apt-get update && \
     apt-get install -y google-chrome-stable
 
-# ✅ FIXED: Install compatible ChromeDriver (latest stable)
-RUN CHROMEDRIVER_VERSION=$(curl -sSL https://chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
+# Install ChromeDriver
+RUN CHROME_VERSION=$(google-chrome-stable --version | grep -oP '\d+\.\d+\.\d+') && \
+    CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION" || curl -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
     wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip" && \
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    chmod +x /usr/local/bin/chromedriver && \
-    rm /tmp/chromedriver.zip
+    chmod +x /usr/local/bin/chromedriver
 
-# Set environment variables for Chrome and ChromeDriver
+# Set environment variables
 ENV GOOGLE_CHROME_BIN=/usr/bin/google-chrome
 ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 
@@ -41,8 +41,8 @@ ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy your application source code
+# Copy source code
 COPY . .
 
-# Start the Flask or Gunicorn server
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
+# Start the server (CHANGE: using main.py)
+CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:10000"]
