@@ -1,38 +1,28 @@
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 from tabulate import tabulate
 import time
 import re
 import os
 
-# Set these dynamically from Flask later
 COLLEGE_LOGIN_URL = "https://samvidha.iare.ac.in/"
 ATTENDANCE_URL = "https://samvidha.iare.ac.in/home?action=course_content"
 
-# -------------------
-# Create HEADLESS Chrome Driver for Replit
-# -------------------
 def create_driver():
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run in headless mode
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--single-process")
 
     return webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
+        service=Service(os.environ.get("CHROMEDRIVER_PATH", "/usr/local/bin/chromedriver")),
         options=chrome_options
     )
 
-# -------------------
-# Scraping & Calculation Logic
-# -------------------
 def calculate_attendance_percentage(rows):
     result = {
         "subjects": {},
@@ -51,7 +41,6 @@ def calculate_attendance_percentage(rows):
 
     for row in rows:
         text = row.text.strip().upper()
-
         if not text or text.startswith("S.NO") or "TOPICS COVERED" in text:
             continue
 
@@ -95,12 +84,8 @@ def calculate_attendance_percentage(rows):
 
     return result
 
-# -------------------
-# Main Logic for Login + Scraping
-# -------------------
 def login_and_get_attendance(username, password):
     driver = create_driver()
-    
     try:
         driver.get(COLLEGE_LOGIN_URL)
         time.sleep(2)
