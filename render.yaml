@@ -1,6 +1,9 @@
 services:
   - type: web
     name: attendance-app
-    env: python
-    buildCommand: ./build.sh && pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    env: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: GOOGLE_CHROME_BIN
+        value: /usr/bin/chromium
