@@ -1,49 +1,33 @@
+# Use official slim Python image
 FROM python:3.10-slim
 
-# Install system dependencies
+# Prevent Python from writing .pyc files and buffering stdout/stderr
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies and Chromium
 RUN apt-get update && apt-get install -y \
-    wget \
-    unzip \
-    curl \
-    gnupg2 \
-    fonts-liberation \
-    libnss3 \
-    libxss1 \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libgtk-3-0 \
-    libx11-xcb1 \
-    libxcb-dri3-0 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    xdg-utils \
-    --no-install-recommends && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    wget unzip gnupg curl \
+    fonts-liberation libappindicator3-1 libasound2 libatk-bridge2.0-0 libatk1.0-0 \
+    libcups2 libdbus-1-3 libgdk-pixbuf2.0-0 libnspr4 libnss3 libx11-xcb1 \
+    libxcomposite1 libxdamage1 libxrandr2 xdg-utils libu2f-udev \
+    libvulkan1 chromium && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Install Google Chrome
-RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
-    apt-get update && apt-get install -y google-chrome-stable && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Install ChromeDriver
-RUN CHROME_VERSION=$(google-chrome-stable --version | grep -oP '\d+\.\d+\.\d+') && \
-    CHROMEDRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION" || curl -s https://chromedriver.storage.googleapis.com/LATEST_RELEASE) && \
-    wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip" && \
-    unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
-    chmod +x /usr/local/bin/chromedriver
-
-# Set environment variables for Selenium
-ENV GOOGLE_CHROME_BIN=/usr/bin/google-chrome
-ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
+# Set environment variable for Chrome binary path
+ENV GOOGLE_CHROME_BIN=/usr/bin/chromium
 
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
-COPY . .
+# Copy project files
+COPY . /app
+WORKDIR /app
 
-# Start Gunicorn server on Render
-CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:10000"]
+# Expose the port your app runs on
+EXPOSE 10000
+
+# Start the Flask app
+CMD ["python", "app.py"]
