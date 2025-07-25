@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Install Chrome dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
@@ -18,13 +18,14 @@ RUN apt-get update && apt-get install -y \
     libxdamage1 \
     libxrandr2 \
     xdg-utils \
-    --no-install-recommends
+    --no-install-recommends && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Chrome
+# Install Google Chrome
 RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
     echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
-    apt-get update && \
-    apt-get install -y google-chrome-stable
+    apt-get update && apt-get install -y google-chrome-stable && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install ChromeDriver
 RUN CHROME_VERSION=$(google-chrome-stable --version | grep -oP '\d+\.\d+\.\d+') && \
@@ -33,7 +34,7 @@ RUN CHROME_VERSION=$(google-chrome-stable --version | grep -oP '\d+\.\d+\.\d+') 
     unzip /tmp/chromedriver.zip -d /usr/local/bin/ && \
     chmod +x /usr/local/bin/chromedriver
 
-# Set environment variables
+# Set environment variables for Selenium
 ENV GOOGLE_CHROME_BIN=/usr/bin/google-chrome
 ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 
@@ -41,8 +42,8 @@ ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
+# Copy app code
 COPY . .
 
-# Start the server (CHANGE: using main.py)
+# Start Gunicorn server on Render
 CMD ["gunicorn", "main:app", "--bind", "0.0.0.0:10000"]
