@@ -1,6 +1,6 @@
 FROM python:3.10-slim
 
-# Install system dependencies and Chrome dependencies
+# Install system & Chrome dependencies
 RUN apt-get update && apt-get install -y \
     wget unzip curl gnupg2 ca-certificates fonts-liberation \
     libnss3 libxss1 libasound2 libatk-bridge2.0-0 libgtk-3-0 \
@@ -21,22 +21,26 @@ RUN wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$
     chmod +x /usr/local/bin/chromedriver && \
     rm /tmp/chromedriver.zip
 
-# Set environment variables
+# Set environment variables for Selenium
 ENV GOOGLE_CHROME_BIN=/usr/bin/google-chrome
 ENV CHROMEDRIVER_PATH=/usr/local/bin/chromedriver
 
 # Set working directory
 WORKDIR /app
 
-# Copy and install Python dependencies
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy your app (rename "grok" to your folder name)
-COPY ./grok /app
+# Copy the application source code (adjust if your app folder has a different name)
+COPY ./grok /app/grok
 
-# Expose port if needed (optional)
+# If you use Celery (optional: for worker containers)
+# COPY ./celery_worker.sh /app
+# RUN chmod +x /app/celery_worker.sh
+
+# Expose Flask app port (only needed for web service)
 EXPOSE 10000
 
-# Start the Flask app with Gunicorn
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000", "--workers", "1", "--timeout", "120"]
+# Start Flask app with Gunicorn
+CMD ["gunicorn", "grok.app:app", "--bind", "0.0.0.0:10000", "--workers", "1", "--timeout", "120"]
