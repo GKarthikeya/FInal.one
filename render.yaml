@@ -8,3 +8,26 @@ services:
     envVars:
       - key: GOOGLE_CHROME_BIN
         value: /usr/bin/google-chrome
+      - key: REDIS_URL
+        value: redis://redis:6379/0  # This connects to the private Redis instance
+      - key: WORKER_ROLE
+        value: web
+
+  - type: worker
+    name: celery-worker
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: GOOGLE_CHROME_BIN
+        value: /usr/bin/google-chrome
+      - key: REDIS_URL
+        value: redis://redis:6379/0
+      - key: WORKER_ROLE
+        value: worker
+    startCommand: celery -A grok.tasks worker --loglevel=info
+
+  - type: redis
+    name: redis
+    plan: free
