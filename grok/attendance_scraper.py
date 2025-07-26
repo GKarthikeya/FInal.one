@@ -2,7 +2,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from tabulate import tabulate
 import time
 import re
 import os
@@ -84,7 +83,7 @@ def calculate_attendance_percentage(rows):
 
     return result
 
-def login_and_get_attendance(username, password):
+def get_attendance_data(username, password):
     driver = create_driver()
     try:
         driver.get(COLLEGE_LOGIN_URL)
