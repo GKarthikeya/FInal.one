@@ -1,123 +1,47 @@
-from flask import Flask, render_template, request
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-from tabulate import tabulate
-import re
+from flask import Flask, request, jsonify
+from celery.result import AsyncResult
+from grok.tasks import check_attendance  # celery task
 
 app = Flask(__name__)
 
-COLLEGE_LOGIN_URL = "https://samvidha.iare.ac.in/"
-ATTENDANCE_URL = "https://samvidha.iare.ac.in/home?action=course_content"
-
-def calculate_attendance_percentage(rows):
-    result = {"subjects": {}, "overall": {"present": 0, "absent": 0, "percentage": 0.0, "success": False}}
-
-    current_course = None
-    total_present = 0
-    total_absent = 0
-
-    for row in rows:
-        text = row.text.strip().upper()
-        if not text or text.startswith("S.NO") or "TOPICS COVERED" in text:
-            continue
-
-        course_match = re.match(r"^(A[A-Z]+\d+)\s*[-:\s]+\s*(.+)$", text)
-        if course_match:
-            current_course = course_match.group(1)
-            course_name = course_match.group(2).strip()
-            result["subjects"][current_course] = {
-                "name": course_name, "present": 0, "absent": 0, "percentage": 0.0
-            }
-            continue
-
-        if current_course:
-            present_count = text.count("PRESENT")
-            absent_count = text.count("ABSENT")
-            result["subjects"][current_course]["present"] += present_count
-            result["subjects"][current_course]["absent"] += absent_count
-            total_present += present_count
-            total_absent += absent_count
-
-    for sub in result["subjects"].values():
-        total = sub["present"] + sub["absent"]
-        if total > 0:
-            sub["percentage"] = round((sub["present"] / total) * 100, 2)
-
-    overall_total = total_present + total_absent
-    if overall_total > 0:
-        result["overall"] = {
-            "present": total_present,
-            "absent": total_absent,
-            "percentage": round((total_present / overall_total) * 100, 2),
-            "success": True
-        }
-
-    return result
-
-def get_attendance_data(username, password):
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--window-size=1920,1080")
-
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()),
-        options=options
-    )
-
-    try:
-        wait = WebDriverWait(driver, 15)
-
-        driver.get(COLLEGE_LOGIN_URL)
-        wait.until(EC.presence_of_element_located((By.ID, "txt_uname")))
-
-        driver.find_element(By.ID, "txt_uname").send_keys(username)
-        driver.find_element(By.ID, "txt_pwd").send_keys(password)
-        driver.find_element(By.ID, "but_submit").click()
-
-        # Wait for URL to change after login or body element to appear
-        wait.until(lambda d: d.current_url != COLLEGE_LOGIN_URL or d.find_element(By.TAG_NAME, "body"))
-
-        driver.get(ATTENDANCE_URL)
-        wait.until(EC.presence_of_all_elements_located((By.TAG_NAME, "tr")))
-
-        rows = driver.find_elements(By.TAG_NAME, "tr")
-        return calculate_attendance_percentage(rows)
-
-    finally:
-        driver.quit()
-
 @app.route("/", methods=["GET"])
-def login_page():
-    return render_template("login.html")
+def home():
+    return jsonify({"message": "Attendance API is live"}), 200
 
-@app.route("/attendance", methods=["POST"])
-def show_attendance():
-    username = request.form["username"]
-    password = request.form["password"]
+@app.route("/check", methods=["POST"])
+def check():
+    try:
+        data = request.get_json()
+        username = data.get("username")
+        password = data.get("password")
 
-    data = get_attendance_data(username, password)
-    subjects = data["subjects"]
+        if not username or not password:
+            return jsonify({"error": "Missing 'username' or 'password'"}), 400
 
-    table_data = []
-    for i, (code, sub) in enumerate(subjects.items(), start=1):
-        table_data.append([i, code, sub["name"], sub["present"], sub["absent"], f"{sub['percentage']}%"])
+        task = check_attendance.delay(username, password)
+        return jsonify({"task_id": task.id}), 202
 
-    table_html = tabulate(
-        table_data,
-        headers=["S.No", "Course Code", "Course Name", "Present", "Absent", "Percentage"],
-        tablefmt="html"
-    )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    return render_template("attendance.html", table_html=table_html, overall=data["overall"])
+@app.route("/result/<task_id>", methods=["GET"])
+def result(task_id):
+    try:
+        result = AsyncResult(task_id)
+
+        if result.state == "PENDING":
+            return jsonify({"status": "Pending"}), 202
+        elif result.state == "STARTED":
+            return jsonify({"status": "In Progress"}), 202
+        elif result.state == "SUCCESS":
+            return jsonify({"status": "Done", "data": result.result}), 200
+        elif result.state == "FAILURE":
+            return jsonify({"status": "Failed", "error": str(result.result)}), 500
+        else:
+            return jsonify({"status": result.state}), 202
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/ping", methods=["GET"])
 def ping():
