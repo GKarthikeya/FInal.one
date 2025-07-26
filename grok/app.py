@@ -1,38 +1,35 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for
+# File: grok/app.py
+
+from flask import Flask, request, render_template
 from celery.result import AsyncResult
-from .tasks import check_attendance
+from grok.tasks import check_attendance
 import os
 
 app = Flask(__name__)
 
-@app.route("/")
-def index():
-    return jsonify({"message": "Attendance API is live"})
+@app.route("/", methods=["GET"])
+def home():
+    return render_template("login.html")
 
 @app.route("/attendance", methods=["POST"])
-def attendance():
+def handle_attendance():
     username = request.form.get("username")
     password = request.form.get("password")
-
     if not username or not password:
-        return jsonify({"error": "Missing credentials"}), 400
+        return "Missing credentials", 400
 
-    # Start background task
     task = check_attendance.delay({"username": username, "password": password})
-    return redirect(url_for("loading", task_id=task.id))
+    return render_template("loading.html", task_id=task.id)
 
-@app.route("/loading/<task_id>")
-def loading(task_id):
-    return f"Task {task_id} is in progress. Please wait or refresh to check status."
-
-@app.route("/result/<task_id>")
-def result(task_id):
-    task_result = AsyncResult(task_id)
-    if task_result.state == "PENDING":
-        return jsonify({"status": "Pending"})
-    elif task_result.state == "SUCCESS":
-        return jsonify(task_result.result)
-    elif task_result.state == "FAILURE":
-        return jsonify({"status": "Failed", "error": str(task_result.info)}), 500
+@app.route("/result/<task_id>", methods=["GET"])
+def get_result(task_id):
+    task = AsyncResult(task_id)
+    if task.state == "PENDING":
+        return render_template("loading.html", task_id=task_id)
+    elif task.state == "SUCCESS":
+        result = task.result
+        return render_template("attendance.html", table_html=result["table"], overall=result["overall"])
+    elif task.state == "FAILURE":
+        return "Failed to fetch attendance", 500
     else:
-        return jsonify({"status": task_result.state})
+        return "Task in progress...", 202
