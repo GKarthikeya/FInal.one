@@ -1,20 +1,25 @@
 FROM python:3.10-slim
 
-# Chrome install
-RUN apt-get update && apt-get install -y wget gnupg unzip curl \
-    && wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb \
-    && apt install -y ./google-chrome-stable_current_amd64.deb \
-    && rm google-chrome-stable_current_amd64.deb
+# Install OS dependencies
+RUN apt-get update && apt-get install -y wget gnupg unzip curl xvfb chromium chromium-driver
 
-# Working dir
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV GOOGLE_CHROME_BIN=/usr/bin/chromium
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+
+# Set work directory
 WORKDIR /app
 
-# Copy files
-COPY . .
+# Copy all files
+COPY . /app
 
-# Install deps
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Install Python dependencies
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
 
-ENV GOOGLE_CHROME_BIN=/usr/bin/google-chrome
+# Expose port for Render
+EXPOSE 10000
 
-CMD ["./start.sh"]
+# Default start command (can be overridden by startCommand in Render)
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:10000", "grok.app:app"]
