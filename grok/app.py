@@ -1,51 +1,38 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 from celery.result import AsyncResult
-from grok.tasks import check_attendance  # celery task
+from .tasks import check_attendance
+import os
 
 app = Flask(__name__)
 
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({"message": "Attendance API is live"}), 200
+@app.route("/")
+def index():
+    return jsonify({"message": "Attendance API is live"})
 
-@app.route("/check", methods=["POST"])
-def check():
-    try:
-        data = request.get_json()
-        username = data.get("username")
-        password = data.get("password")
+@app.route("/attendance", methods=["POST"])
+def attendance():
+    username = request.form.get("username")
+    password = request.form.get("password")
 
-        if not username or not password:
-            return jsonify({"error": "Missing 'username' or 'password'"}), 400
+    if not username or not password:
+        return jsonify({"error": "Missing credentials"}), 400
 
-        task = check_attendance.delay(username, password)
-        return jsonify({"task_id": task.id}), 202
+    # Start background task
+    task = check_attendance.delay({"username": username, "password": password})
+    return redirect(url_for("loading", task_id=task.id))
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+@app.route("/loading/<task_id>")
+def loading(task_id):
+    return f"Task {task_id} is in progress. Please wait or refresh to check status."
 
-@app.route("/result/<task_id>", methods=["GET"])
+@app.route("/result/<task_id>")
 def result(task_id):
-    try:
-        result = AsyncResult(task_id)
-
-        if result.state == "PENDING":
-            return jsonify({"status": "Pending"}), 202
-        elif result.state == "STARTED":
-            return jsonify({"status": "In Progress"}), 202
-        elif result.state == "SUCCESS":
-            return jsonify({"status": "Done", "data": result.result}), 200
-        elif result.state == "FAILURE":
-            return jsonify({"status": "Failed", "error": str(result.result)}), 500
-        else:
-            return jsonify({"status": result.state}), 202
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/ping", methods=["GET"])
-def ping():
-    return "pong", 200
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    task_result = AsyncResult(task_id)
+    if task_result.state == "PENDING":
+        return jsonify({"status": "Pending"})
+    elif task_result.state == "SUCCESS":
+        return jsonify(task_result.result)
+    elif task_result.state == "FAILURE":
+        return jsonify({"status": "Failed", "error": str(task_result.info)}), 500
+    else:
+        return jsonify({"status": task_result.state})
