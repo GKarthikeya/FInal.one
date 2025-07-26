@@ -3,9 +3,10 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from tabulate import tabulate
-import time
 import re
 
 app = Flask(__name__)
@@ -60,7 +61,7 @@ def calculate_attendance_percentage(rows):
 
 def get_attendance_data(username, password):
     options = Options()
-    options.add_argument("--headless")  # No GUI
+    options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
@@ -73,18 +74,24 @@ def get_attendance_data(username, password):
     )
 
     try:
+        wait = WebDriverWait(driver, 15)
+
         driver.get(COLLEGE_LOGIN_URL)
-        time.sleep(2)
+        wait.until(EC.presence_of_element_located((By.ID, "txt_uname")))
+
         driver.find_element(By.ID, "txt_uname").send_keys(username)
         driver.find_element(By.ID, "txt_pwd").send_keys(password)
         driver.find_element(By.ID, "but_submit").click()
-        time.sleep(3)
+
+        # Wait for URL to change after login or body element to appear
+        wait.until(lambda d: d.current_url != COLLEGE_LOGIN_URL or d.find_element(By.TAG_NAME, "body"))
 
         driver.get(ATTENDANCE_URL)
-        time.sleep(3)
+        wait.until(EC.presence_of_all_elements_located((By.TAG_NAME, "tr")))
 
         rows = driver.find_elements(By.TAG_NAME, "tr")
         return calculate_attendance_percentage(rows)
+
     finally:
         driver.quit()
 
